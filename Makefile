@@ -7,7 +7,7 @@ build:
 	./build.sh
 
 run:
-	./run.sh
+	bash -x ./run.sh
 
 clean:
 	docker stop ${CONTAINER} || true

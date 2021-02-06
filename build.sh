@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 set -e
 
 
@@ -74,6 +74,6 @@ cleanup() {
 }
 
 trap cleanup EXIT
-tmpdir=$(mktemp -u -p .)
+tmpdir=$(mktemp -u -d tmp.XXXX)
 download_rootfs
 docker_build
