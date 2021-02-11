@@ -57,6 +57,12 @@ $ make clean
 ```
 This will delete the container and all associated Docker networks so you can start fresh if you screw something up.
 
+## PCI passthrough
+
+This feature supports PCI passthrough, which passes the Host's NIC to the container. The NIC won't seen anymore in the
+host before the container is destroyed. A new WAN dirver 'hostnic' is introduced here and the driver can be found
+in [hostnic driver](https://github.com/databill/docker-plugin-hostnic).
+
 ---
 
 ## Notes

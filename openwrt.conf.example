@@ -16,8 +16,11 @@ CONTAINER=openwrt_1
 ## Docker network settings
 # name of the WAN Docker network
 WAN_NAME=openwrt-wan
-# Docker network driver for WAN interface. Use 'macvlan' for
-# wired (Ethernet), 'ipvlan' for wireless (experimental).
+# Docker network driver for WAN interface, can be one of
+# 'bridge', 'macvlan', 'ipvlan' or 'hostnic'. Use 'macvlan' for
+# wired (Ethernet), 'ipvlan' for wireless (experimental), 'hostnic'
+# for pci-passthough(pass host's NIC to container and won't seen
+# in the host anymore).
 WAN_DRIVER=macvlan
 # Host interface which will provide the WAN link for OpenWrt.
 WAN_PARENT=eth0

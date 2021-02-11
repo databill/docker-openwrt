@@ -64,7 +64,8 @@ _gen_config() {
 
 _init_network() {
     echo "* setting up docker network"
-    local LAN_ARGS
+    local LAN_ARGS=""
+    local WAN_ARGS=""
     case $LAN_DRIVER in
         bridge)
             LAN_ARGS=""
@@ -80,15 +81,27 @@ _init_network() {
             exit 1
         ;;
     esac
+    case $WAN_DRIVER in
+        hostnic)
+            WAN_ARGS=""
+        ;;
+        macvlan)
+            WAN_ARGS="-o parent=$WAN_PARENT"
+        ;;
+        ipvlan)
+            WAN_ARGS="-o parent=$WAN_PARENT -o ipvlan_mode=l2"
+        ;;
+    esac
+
     docker network create --driver $LAN_DRIVER \
         $LAN_ARGS \
         --subnet $LAN_SUBNET \
         $LAN_NAME || exit 1
 
     docker network create --driver $WAN_DRIVER \
+        $WAN_ARGS \
         --subnet $WAN_SUBNET \
         --gateway $WAN_GATEWAY \
-        -o parent=$WAN_PARENT \
         $WAN_NAME || exit 1
 }
 
@@ -123,14 +136,19 @@ _create_or_start_container() {
             --cap-add NET_RAW \
             --hostname openwrt \
             --ip $LAN_ADDR \
+            --privileged \
             --sysctl net.netfilter.nf_conntrack_acct=1 \
             --sysctl net.ipv6.conf.all.disable_ipv6=0 \
             --sysctl net.ipv6.conf.all.forwarding=1 \
             --name $CONTAINER $IMAGE:$TAG >/dev/null
-        docker network connect $WAN_NAME $CONTAINER
 
         _gen_config
         docker start $CONTAINER
+        if [[ "$WAN_DRIVER"_ == "hostnic"_ ]]; then
+            docker network connect --driver-opt mac-address="00:1c:42:c2:14:39" $WAN_NAME $CONTAINER
+        else
+            docker network connect $WAN_NAME $CONTAINER
+        fi
     fi
 }
 
@@ -190,8 +208,15 @@ _prepare_network() {
     esac
 
     case $WAN_DRIVER in
+        hostnic)
+            echo "* setting up host $WAN_DRIVER interface"
+            docker exec -it $CONTAINER sh -c "
+                    uci -q set network.wan.proto='dhcp'
+                    uci commit
+		    /etc/init.d/network restart"
+        ;;
         macvlan)
-            echo "* setting up host $LAN_DRIVER interface"
+            echo "* setting up host $WAN_DRIVER interface"
             WAN_IFACE=macvlan2
             sudo ip link add $WAN_IFACE link $WAN_PARENT type $WAN_DRIVER mode bridge
             sudo ip link set $WAN_IFACE up
@@ -204,7 +229,7 @@ _prepare_network() {
                     uci -q set network.wan.gateway=${WAN_GATEWAY}
                     uci commit"
         ;;
-            ipvlan)
+        ipvlan)
                 echo "* 'ipvlan' mode selected for WAN interface"
                 # need to set DHCP broadcast flag
                 # and set clientid to some random value so we get a new lease
